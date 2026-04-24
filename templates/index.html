@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DU Log Parser</title>
+    <style>
+        #suggestions {
+            border: 1px solid #ccc;
+            max-width: 200px;
+            position: absolute;
+            background: white;
+        }
+        .item {
+            padding: 5px;
+            cursor: pointer;
+        }
+        .item:hover {
+            background-color: #eee;
+        }
+    </style>
+
+    <!-- Mermaid for diagram -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+</head>
+
+<body>
+
+<h2>Upload du log File</h2>
+
+<!-- Step 1: Upload -->
+<form method="POST" enctype="multipart/form-data">
+    <input type="file" name="logfile" required>
+    <button type="submit">Upload</button>
+</form>
+
+<br>
+
+
+<input type="text" id="searchBox" placeholder="Search User ID...">
+<div id="suggestions"></div>
+
+<script>
+const input = document.getElementById("searchBox");
+const suggestionsBox = document.getElementById("suggestions");
+
+input.addEventListener("input", async () => {
+    const query = input.value;
+
+    if (query.length === 0) {
+        suggestionsBox.innerHTML = "";
+        return;
+    }
+
+    const res = await fetch(`/search_users?q=${query}`);
+    const data = await res.json();
+
+    suggestionsBox.innerHTML = "";
+
+    data.forEach(user => {
+        const div = document.createElement("div");
+        div.classList.add("item");
+        div.textContent = user;
+
+        div.onclick = () => {
+            input.value = user;
+            suggestionsBox.innerHTML = "";
+        };
+
+        suggestionsBox.appendChild(div);
+    });
+});
+</script>
+
+
+<!-- 🔍 Search Bar -->
+{% if ue_ids %}
+<form method="POST">
+    <label>Enter ue id:</label>
+    <input type="text" name="ue_id" placeholder="Enter ue id(e.g. 101)" required>
+    <button type="submit">Search</button>
+</form>
+{% endif %}
+
+<br>
+
+<!-- Step 3: Sequence Diagram -->
+{% if flow %}
+<h3>Sequence Diagram:</h3>
+
+<div class="mermaid">
+sequenceDiagram
+    participant UE
+    participant DU
+    participant CORE
+
+    {% for step in flow %}
+    UE->>DU: {{ step }}
+    {% endfor %}
+
+    DU-->>UE: Response Complete
+</div>
+
+{% endif %}
+</body>
+</html>

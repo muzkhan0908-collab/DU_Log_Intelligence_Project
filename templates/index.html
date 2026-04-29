@@ -2,48 +2,187 @@
 <html>
 <head>
     <title>DU Log Parser</title>
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap" rel="stylesheet">
+
+    <!-- Mermaid -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
     <style>
-        #suggestions {
-            border: 1px solid #ccc;
-            max-width: 200px;
-            position: absolute;
-            background: white;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
         }
+
+        body {
+            height: 100vh;
+            overflow-x: hidden;
+            color: white;
+        }
+
+        /* 🌈 Animated Gradient Background */
+        body::before {
+            content: "";
+            position: fixed;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                #6a11cb,
+                #2575fc,
+                #ff6a00,
+                #ee0979
+            );
+            background-size: 400% 400%;
+            animation: gradientBG 12s ease infinite;
+            z-index: -1;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* 🌟 Glass Container */
+        .container {
+            width: 90%;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 25px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+
+        h2, h3 {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        /* 🔘 Buttons */
+        button {
+            background: #ff6a00;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #ff3c00;
+            transform: scale(1.05);
+        }
+
+        /* 📂 Input */
+        input[type="file"],
+        input[type="text"] {
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        /* 🔍 Suggestions */
+        #suggestions {
+            border-radius: 8px;
+            background: rgba(255,255,255,0.9);
+            color: black;
+            position: absolute;
+            width: 100%;
+            max-width: 300px;
+        }
+
         .item {
-            padding: 5px;
+            padding: 8px;
             cursor: pointer;
         }
+
         .item:hover {
-            background-color: #eee;
+            background-color: #ddd;
+        }
+
+        /* 📋 UE List */
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            padding: 6px;
+            background: rgba(255,255,255,0.2);
+            margin: 5px 0;
+            border-radius: 6px;
+        }
+
+        /* 📊 Diagram Box */
+        .diagram-box {
+            background: white;
+            color: black;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            overflow-x: auto;
         }
     </style>
 
-    <!-- Mermaid for diagram -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <script>
-        mermaid.initialize({ startOnLoad: true });
+        mermaid.initialize({ startOnLoad: false });
     </script>
 </head>
 
 <body>
 
-<h2>Upload du log File</h2>
+<div class="container">
 
-<!-- Step 1: Upload -->
+<h2>📡 DU Log Parser</h2>
+
+<!-- Upload -->
 <form method="POST" enctype="multipart/form-data">
     <input type="file" name="logfile" required>
+    <br><br>
     <button type="submit">Upload</button>
 </form>
 
 <br>
 
+<!-- UE IDs -->
+{% if ue_ids %}
 
-<input type="text" id="searchBox" placeholder="Search User ID...">
+<h3>Available UE IDs</h3>
+
+<input list="ueDropdown" id="searchBox" placeholder="🔍 Search User ID...">
+
+<datalist id="ueDropdown">
+    {% for id in ue_ids %}
+        <option value="{{ id }}">
+    {% endfor %}
+</datalist>
+
+{% endif %}
+
+<br>
+
+<!-- Search -->
+<input type="text" id="searchBox" placeholder="🔍 Search User ID...">
 <div id="suggestions"></div>
+
+<form method="GET" id="ueForm">
+    <input type="hidden" name="ue_id" id="hiddenUE">
+</form>
 
 <script>
 const input = document.getElementById("searchBox");
 const suggestionsBox = document.getElementById("suggestions");
+const hiddenInput = document.getElementById("hiddenUE");
+const form = document.getElementById("ueForm");
 
 input.addEventListener("input", async () => {
     const query = input.value;
@@ -65,7 +204,9 @@ input.addEventListener("input", async () => {
 
         div.onclick = () => {
             input.value = user;
+            hiddenInput.value = user;
             suggestionsBox.innerHTML = "";
+            form.submit();
         };
 
         suggestionsBox.appendChild(div);
@@ -73,35 +214,33 @@ input.addEventListener("input", async () => {
 });
 </script>
 
-
-<!-- 🔍 Search Bar -->
-{% if ue_ids %}
-<form method="POST">
-    <label>Enter ue id:</label>
-    <input type="text" name="ue_id" placeholder="Enter ue id(e.g. 101)" required>
-    <button type="submit">Search</button>
-</form>
-{% endif %}
-
 <br>
 
-<!-- Step 3: Sequence Diagram -->
-{% if flow %}
-<h3>Sequence Diagram:</h3>
+<!-- Selected UE -->
+{% if request.args.get('ue_id') %}
+<h3>Selected UE: {{ request.args.get('ue_id') }}</h3>
+{% endif %}
 
+<!-- Diagram -->
+{% if flow %}
+<h3>📊 Sequence Diagram</h3>
+
+<div class="diagram-box">
 <div class="mermaid">
 sequenceDiagram
-    participant UE
-    participant DU
-    participant CORE
-
     {% for step in flow %}
-    UE->>DU: {{ step }}
+    {{ step }}
     {% endfor %}
-
-    DU-->>UE: Response Complete
+</div>
 </div>
 
+<script>
+    mermaid.init(undefined, document.querySelectorAll(".mermaid"));
+</script>
+
 {% endif %}
+
+</div>
+
 </body>
 </html>

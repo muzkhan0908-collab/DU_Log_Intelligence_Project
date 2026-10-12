@@ -1,246 +1,829 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>DU Log Parser</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap" rel="stylesheet">
+    <title>DU Log Intelligence</title>
 
-    <!-- Mermaid -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 
     <style>
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-            font-family: 'Poppins', sans-serif;
         }
 
         body {
-            height: 100vh;
-            overflow-x: hidden;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f4f6f9;
+            color: #1f2937;
+        }
+
+        .header {
+            background: #111827;
             color: white;
+            padding: 22px 35px;
         }
 
-        /* 🌈 Animated Gradient Background */
-        body::before {
-            content: "";
-            position: fixed;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(
-                45deg,
-                #6a11cb,
-                #2575fc,
-                #ff6a00,
-                #ee0979
-            );
-            background-size: 400% 400%;
-            animation: gradientBG 12s ease infinite;
-            z-index: -1;
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 6px;
         }
 
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        .header p {
+            color: #cbd5e1;
+            font-size: 14px;
         }
 
-        /* 🌟 Glass Container */
         .container {
-            width: 90%;
-            max-width: 800px;
-            margin: 40px auto;
-            padding: 25px;
-            border-radius: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(15px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            max-width: 1400px;
+            margin: 25px auto;
+            padding: 0 20px;
         }
 
-        h2, h3 {
-            text-align: center;
+        .upload-card,
+        .search-card,
+        .flow-container,
+        .id-list,
+        .analysis-card,
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+        }
+
+        .upload-card {
+            padding: 25px;
+            margin-bottom: 22px;
+        }
+
+        .upload-card h2 {
             margin-bottom: 15px;
         }
 
-        /* 🔘 Buttons */
+        .upload-form {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        input[type="file"] {
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 7px;
+            background: white;
+        }
+
         button {
-            background: #ff6a00;
             border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
+            border-radius: 7px;
+            padding: 11px 18px;
+            background: #2563eb;
             color: white;
             cursor: pointer;
-            transition: 0.3s;
+            font-weight: bold;
         }
 
         button:hover {
-            background: #ff3c00;
-            transform: scale(1.05);
+            background: #1d4ed8;
         }
 
-        /* 📂 Input */
-        input[type="file"],
-        input[type="text"] {
-            padding: 10px;
-            border-radius: 8px;
-            border: none;
+        .section-title {
+            margin: 25px 0 15px;
+            font-size: 21px;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .card {
+            padding: 20px;
+        }
+
+        .card-title {
+            color: #6b7280;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .card-value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .search-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .search-card {
+            padding: 20px;
+        }
+
+        .search-card h3 {
+            margin-bottom: 12px;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
             width: 100%;
-            margin-top: 10px;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 7px;
+            font-size: 14px;
+            outline: none;
         }
 
-        /* 🔍 Suggestions */
-        #suggestions {
-            border-radius: 8px;
-            background: rgba(255,255,255,0.9);
-            color: black;
+        .search-box input:focus {
+            border-color: #2563eb;
+        }
+
+        .suggestions {
             position: absolute;
-            width: 100%;
-            max-width: 300px;
+            left: 0;
+            right: 0;
+            top: 48px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 7px;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
         }
 
-        .item {
-            padding: 8px;
+        .suggestion {
+            padding: 10px 12px;
             cursor: pointer;
         }
 
-        .item:hover {
-            background-color: #ddd;
+        .suggestion:hover {
+            background: #eff6ff;
         }
 
-        /* 📋 UE List */
-        ul {
-            list-style: none;
-            padding: 0;
+        .search-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
-        li {
-            padding: 6px;
-            background: rgba(255,255,255,0.2);
-            margin: 5px 0;
-            border-radius: 6px;
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
         }
 
-        /* 📊 Diagram Box */
-        .diagram-box {
-            background: white;
-            color: black;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
+        .analysis-card {
+            padding: 18px;
+        }
+
+        .analysis-card span {
+            display: block;
+            color: #6b7280;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .analysis-card strong {
+            font-size: 22px;
+        }
+
+        .flow-container {
+            padding: 25px;
             overflow-x: auto;
         }
+
+        .mermaid {
+            min-width: 700px;
+            text-align: center;
+        }
+
+        .empty {
+            color: #6b7280;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .id-list {
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .id-list h3 {
+            margin-bottom: 12px;
+        }
+
+        .id-container {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .id-tag {
+            background: #eff6ff;
+            color: #1d4ed8;
+            padding: 7px 10px;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 900px) {
+            .cards,
+            .analysis-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .search-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 550px) {
+            .cards,
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                padding: 20px;
+            }
+        }
     </style>
-
-    <script>
-        mermaid.initialize({ startOnLoad: false });
-    </script>
 </head>
-
 <body>
+
+<div class="header">
+    <h1>DU Log Intelligence</h1>
+    <p>Log analysis, UE investigation and transaction flow intelligence</p>
+</div>
 
 <div class="container">
 
-<h2>📡 DU Log Parser</h2>
+    <!-- Upload Log File -->
+    <div class="upload-card">
 
-<!-- Upload -->
-<form method="POST" enctype="multipart/form-data">
-    <input type="file" name="logfile" required>
-    <br><br>
-    <button type="submit">Upload</button>
-</form>
+        <h2>Upload Log File</h2>
 
-<br>
+        <form
+            class="upload-form"
+            method="POST"
+            enctype="multipart/form-data"
+        >
 
-<!-- UE IDs -->
-{% if ue_ids %}
+            <input
+                type="file"
+                name="logfile"
+                accept=".log,.txt"
+                required
+            >
 
-<h3>Available UE IDs</h3>
+            <button type="submit">
+                Analyze Logs
+            </button>
 
-<input list="ueDropdown" id="searchBox" placeholder="🔍 Search User ID...">
+        </form>
 
-<datalist id="ueDropdown">
-    {% for id in ue_ids %}
-        <option value="{{ id }}">
-    {% endfor %}
-</datalist>
+    </div>
 
-{% endif %}
 
-<br>
+    <!-- Dashboard -->
+    <h2 class="section-title">Dashboard</h2>
 
-<!-- Search -->
-<input type="text" id="searchBox" placeholder="🔍 Search User ID...">
-<div id="suggestions"></div>
+    <div class="cards">
 
-<form method="GET" id="ueForm">
-    <input type="hidden" name="ue_id" id="hiddenUE">
-</form>
+        <div class="card">
+            <div class="card-title">UE IDs</div>
 
+            <div class="card-value">
+                {{ ue_ids|length }}
+            </div>
+        </div>
+
+
+        <div class="card">
+            <div class="card-title">Transactions</div>
+
+            <div class="card-value">
+                {{ trans_ids|length }}
+            </div>
+        </div>
+
+
+        <div class="card">
+            <div class="card-title">Flow Steps</div>
+
+            <div class="card-value">
+                {{ flow|length }}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Modules Involved</div>
+
+            <div class="card-value">
+                {{ analysis.get('modules_involved', 0) }}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Transaction Status</div>
+    <div class="card-value">
+        {% if flow %}
+            COMPLETED
+        {% else %}
+            —
+        {% endif %}
+    </div>
+</div>
+
+
+        <div class="card">
+            <div class="card-title">Analysis</div>
+
+            <div class="card-value">
+
+                {% if analysis %}
+                    Ready
+                {% else %}
+                    —
+                {% endif %}
+
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- Search -->
+    <h2 class="section-title">
+        Investigate Logs
+    </h2>
+
+    <div class="search-grid">
+
+
+        <!-- UE Search -->
+        <div class="search-card">
+
+            <h3>Search UE ID</h3>
+
+            <div class="search-box">
+
+                <input
+                    type="text"
+                    id="ueSearch"
+                    placeholder="Enter UE ID..."
+                    autocomplete="off"
+                >
+
+                <div
+                    id="ueSuggestions"
+                    class="suggestions"
+                ></div>
+
+            </div>
+
+            <div class="search-actions">
+
+                <button
+                    type="button"
+                    onclick="searchUE()"
+                >
+                    Search UE
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- Transaction Search -->
+        <div class="search-card">
+
+            <h3>Search Transaction</h3>
+
+            <div class="search-box">
+
+                <input
+                    type="text"
+                    id="transSearch"
+                    placeholder="Enter Transaction ID..."
+                    autocomplete="off"
+                >
+
+                <div
+                    id="transSuggestions"
+                    class="suggestions"
+                ></div>
+
+            </div>
+
+            <div class="search-actions">
+
+                <button
+                    type="button"
+                    onclick="searchTransaction()"
+                >
+                    Search Transaction
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+    <!-- Log Analysis -->
+
+    {% if analysis %}
+
+    <h2 class="section-title">
+        Log Analysis
+    </h2>
+
+    <div class="analysis-grid">
+
+        {% for key, value in analysis.items() %}
+
+        <div class="analysis-card">
+
+            <span>
+                {{ key|replace('_', ' ')|title }}
+            </span>
+
+            <strong>
+                {{ value }}
+            </strong>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- Detected UE IDs -->
+
+    {% if ue_ids %}
+
+    <div class="id-list">
+
+        <h3>
+            Detected UE IDs
+        </h3>
+
+        <div class="id-container">
+
+            {% for ue in ue_ids %}
+
+            <span class="id-tag">
+                {{ ue }}
+            </span>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- Detected Transactions -->
+
+    {% if trans_ids %}
+
+    <div class="id-list">
+
+        <h3>
+            Detected Transactions
+        </h3>
+
+        <div class="id-container">
+
+            {% for trans in trans_ids %}
+
+            <span class="id-tag">
+                {{ trans }}
+            </span>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+
+   <!-- Call Flow -->
+
+<h2 class="section-title">
+    Transaction Call Flow
+</h2>
+
+<div class="flow-container">
+
+    {% if flow %}
+
+        <div class="mermaid" id="flowDiagram">
+
+            sequenceDiagram
+
+            participant CU
+            participant F1AP
+            participant APP_UE
+
+            {% for step in flow %}
+                {{ step | safe }}
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="empty">
+            Upload a log file and search for a UE ID
+            to generate the call-flow diagram.
+        </div>
+
+    {% endif %}
+
+</div>
 <script>
-const input = document.getElementById("searchBox");
-const suggestionsBox = document.getElementById("suggestions");
-const hiddenInput = document.getElementById("hiddenUE");
-const form = document.getElementById("ueForm");
 
-input.addEventListener("input", async () => {
-    const query = input.value;
+    // ================================
+    // MERMAID
+    // ================================
 
-    if (query.length === 0) {
-        suggestionsBox.innerHTML = "";
-        return;
+    mermaid.initialize({
+        startOnLoad: true,
+        securityLevel: "loose"
+    });
+
+
+    // ================================
+    // UE SEARCH
+    // ================================
+
+    const ueSearch =
+        document.getElementById("ueSearch");
+
+    const ueSuggestions =
+        document.getElementById("ueSuggestions");
+
+
+    ueSearch.addEventListener(
+        "input",
+        async function () {
+
+            const query =
+                this.value.trim();
+
+            if (!query) {
+
+                ueSuggestions.style.display =
+                    "none";
+
+                ueSuggestions.innerHTML = "";
+
+                return;
+            }
+
+            try {
+
+                const response =
+                    await fetch(
+                        "/search_users?q=" +
+                        encodeURIComponent(query)
+                    );
+
+                const results =
+                    await response.json();
+
+                ueSuggestions.innerHTML = "";
+
+                if (results.length === 0) {
+
+                    ueSuggestions.style.display =
+                        "none";
+
+                    return;
+                }
+
+                results.forEach(function (ue) {
+
+                    const div =
+                        document.createElement("div");
+
+                    div.className =
+                        "suggestion";
+
+                    div.textContent = ue;
+
+                    div.onclick = function () {
+
+                        ueSearch.value = ue;
+
+                        ueSuggestions.style.display =
+                            "none";
+                    };
+
+                    ueSuggestions.appendChild(div);
+
+                });
+
+                ueSuggestions.style.display =
+                    "block";
+
+            } catch (error) {
+
+                console.error(
+                    "UE search error:",
+                    error
+                );
+
+            }
+
+        }
+    );
+
+
+    // ================================
+    // TRANSACTION SEARCH
+    // ================================
+
+    const transSearch =
+        document.getElementById("transSearch");
+
+    const transSuggestions =
+        document.getElementById("transSuggestions");
+
+
+    transSearch.addEventListener(
+        "input",
+        async function () {
+
+            const query =
+                this.value.trim();
+
+            if (!query) {
+
+                transSuggestions.style.display =
+                    "none";
+
+                transSuggestions.innerHTML = "";
+
+                return;
+            }
+
+            try {
+
+                const response =
+                    await fetch(
+                        "/search_trans?q=" +
+                        encodeURIComponent(query)
+                    );
+
+                const results =
+                    await response.json();
+
+                transSuggestions.innerHTML = "";
+
+                if (results.length === 0) {
+
+                    transSuggestions.style.display =
+                        "none";
+
+                    return;
+                }
+
+                results.forEach(function (trans) {
+
+                    const div =
+                        document.createElement("div");
+
+                    div.className =
+                        "suggestion";
+
+                    div.textContent = trans;
+
+                    div.onclick = function () {
+
+                        transSearch.value = trans;
+
+                        transSuggestions.style.display =
+                            "none";
+
+                    };
+
+                    transSuggestions.appendChild(div);
+
+                });
+
+                transSuggestions.style.display =
+                    "block";
+
+            } catch (error) {
+
+                console.error(
+                    "Transaction search error:",
+                    error
+                );
+
+            }
+
+        }
+    );
+
+
+    // ================================
+    // SEARCH UE
+    // ================================
+
+    function searchUE() {
+
+        const ue =
+            ueSearch.value.trim();
+
+        if (!ue) {
+
+            alert(
+                "Please enter a UE ID."
+            );
+
+            return;
+        }
+
+        window.location.href =
+            "/?ue_id=" +
+            encodeURIComponent(ue);
+
     }
 
-    const res = await fetch(`/search_users?q=${query}`);
-    const data = await res.json();
 
-    suggestionsBox.innerHTML = "";
+    // ================================
+    // SEARCH TRANSACTION
+    // ================================
 
-    data.forEach(user => {
-        const div = document.createElement("div");
-        div.classList.add("item");
-        div.textContent = user;
+    function searchTransaction() {
 
-        div.onclick = () => {
-            input.value = user;
-            hiddenInput.value = user;
-            suggestionsBox.innerHTML = "";
-            form.submit();
-        };
+        const trans =
+            transSearch.value.trim();
 
-        suggestionsBox.appendChild(div);
-    });
-});
+        if (!trans) {
+
+            alert(
+                "Please enter a Transaction ID."
+            );
+
+            return;
+        }
+
+        window.location.href =
+            "/?trans_id=" +
+            encodeURIComponent(trans);
+
+    }
+
+
+    // ================================
+    // CLOSE SUGGESTIONS
+    // ================================
+
+    document.addEventListener(
+        "click",
+        function (event) {
+
+            if (
+                !event.target.closest(
+                    ".search-box"
+                )
+            ) {
+
+                ueSuggestions.style.display =
+                    "none";
+
+                transSuggestions.style.display =
+                    "none";
+
+            }
+
+        }
+    );
+
 </script>
-
-<br>
-
-<!-- Selected UE -->
-{% if request.args.get('ue_id') %}
-<h3>Selected UE: {{ request.args.get('ue_id') }}</h3>
-{% endif %}
-
-<!-- Diagram -->
-{% if flow %}
-<h3>📊 Sequence Diagram</h3>
-
-<div class="diagram-box">
-<div class="mermaid">
-sequenceDiagram
-    {% for step in flow %}
-    {{ step }}
-    {% endfor %}
-</div>
-</div>
-
-<script>
-    mermaid.init(undefined, document.querySelectorAll(".mermaid"));
-</script>
-
-{% endif %}
-
-</div>
 
 </body>
 </html>

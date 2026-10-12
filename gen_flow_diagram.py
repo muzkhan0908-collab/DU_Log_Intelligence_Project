@@ -1,106 +1,256 @@
-import os
 import re
-import string
-cwd = os.getcwd()+"\\"
-
-# print(cwd)
-# print("Enter the du_log file name: ")
-file_name = "du_26_02_09_08_21_48_part_2.log"
-# print("Enter the UE ID to extracted: ")
-UE_ID = 19863
-
-# file_output = UE_ID + ".txt"
-# UE_ID = "UE_ID:"+UE_ID
-
-# UE_file = open(file_output, "w")
-# DU_file = open(cwd+file_name, "r")
-
-ue_flow = []
-
-modules = ["SS_APP_UE", "CMN_TMR", "RLC_UL_UE", "DU_RRM_UE", "F1AP", "SCH_LVL1_CMN", "NRUP", "EGTP", "RLC_DL_UE", "SCH_LVL2_CMN","SS_MAC_UL_UE"]
-
-f1ap_recv_messages = ["UE_CONTEXT_SETUP_REQ", "DL_RRC_MESSAGE_TRANSFER", "UE_CONTEXT_RELEASE_REQ", 
-                      "UE_CONTEXT_RELEASE_COMMAND" ,"UE_CONTEXT_MODIFICATION_REQUEST", "UE_CONTEXT_MODIFICATION_CONFIRM"]
-f1ap_send_messages = ["INITIAL_UL_", "UE_CONTEXT_SETUP_RES", "UL_RRC_MESSAGE_TRANSFER", "UE_CONTEXT_RELEASE_COMP", 
-                      "UE_CONTEXT_MODIFICATION_RES", "UE_CONTEXT_MODIFICATION_REQUIRED"]
-
-trans_messages = ["TRANS_CREATED", "TRANS_DONE"]
 
 
-main_module = "SS_APP_UE"
+# ============================================================
+# IMPORTANT F1AP SIGNALING MESSAGES
+# ============================================================
+
+F1AP_MESSAGES = [
+    "UE_CONTEXT_SETUP_REQUEST",
+    "UE_CONTEXT_SETUP_RESPONSE",
+
+    "UE_CONTEXT_MODIFICATION_REQUEST",
+    "UE_CONTEXT_MODIFICATION_RESPONSE",
+    "UE_CONTEXT_MODIFICATION_CONFIRM",
+    "UE_CONTEXT_MODIFICATION_REQUIRED",
+
+    "UE_CONTEXT_RELEASE_REQUEST",
+    "UE_CONTEXT_RELEASE_COMMAND",
+    "UE_CONTEXT_RELEASE_COMPLETE",
+
+    "DL_RRC_MESSAGE_TRANSFER",
+    "UL_RRC_MESSAGE_TRANSFER",
+
+    "INITIAL_UL_RRC_MESSAGE",
+]
 
 
-def process_trans(message, line):
-    words = re.split(r":", line)
-    for word in words:
-        trans_split = word.split("]")
-        for trans_word in trans_split:
-            if message in trans_word:
-                note = "Note right of APP_UE: "+trans_word
-                note = note + line[line.find(":TRANS_ID"):]+"\n"
-                ue_flow.append(note)
-                break
+# ============================================================
+# TRANSACTION EVENTS
+# ============================================================
 
-def process_modules(modules, line):
-    if main_module in line:
-        app_loc = line.find(main_module)
-        evt_loc = line.find("EVT_")
-        module_name_found = False
-        for module_name in modules[1:]:
-            if module_name in line:
-                module_name_found = True
-                module_loc = line.find(module_name)
-                if app_loc < module_loc:
-                    ue_flow.append("APP_UE"+"->>"+module_name+":"+line[evt_loc:]+"\n")
-                else:
-                    ue_flow.append(module_name+"->>APP_UE"+":"+line[evt_loc:]+"\n")
-                break
-        if line.count(main_module) > 1:
-            ue_flow.append("APP_UE->>APP_UE:"+line[evt_loc:]+"\n")
+TRANSACTION_EVENTS = [
+    "TRANS_CREATED",
+    "TRANS_DONE",
+]
 
-def process_f1ap_recv_message(message, line):
-    ue_flow.append("CU->>F1AP:"+line[line.find(message):]+"\n")
 
-def process_f1ap_send_message(message, line):
-    ue_flow.append("F1AP->>CU:"+line[line.find(message):]+"\n")
+# ============================================================
+# CHECK SELECTED UE
+# ============================================================
 
+def line_belongs_to_ue(line, ue_id):
+
+    ue_id = str(ue_id)
+
+    pattern = (
+        r"(?:UE_ID|RRM_UE_ID)"
+        r"[:=]"
+        + re.escape(ue_id)
+        + r"(?:[:\s]|$)"
+    )
+
+    return re.search(pattern, line) is not None
+
+
+# ============================================================
+# GET TRANSACTION ID
+# ============================================================
+
+def get_transaction_id(line):
+
+    match = re.search(
+        r"TRANS_ID[:=]([A-Za-z0-9_-]+)",
+        line
+    )
+
+    if match:
+        return match.group(1)
+
+    return None
+
+
+# ============================================================
+# GET DIRECTION
+# ============================================================
+
+def get_direction(line, message):
+
+    # CU -> DU / F1AP
+    if "CU:DU" in line:
+
+        return "CU->>F1AP"
+
+    # DU -> CU / F1AP
+    if "DU:CU" in line:
+
+        return "F1AP->>CU"
+
+    # Default direction based on message type
+    if (
+        message.endswith("REQUEST")
+        or message.endswith("COMMAND")
+        or message.endswith("REQUIRED")
+    ):
+
+        return "CU->>F1AP"
+
+    return "F1AP->>CU"
+
+
+# ============================================================
+# CREATE READABLE LABEL
+# ============================================================
+
+def create_label(line, message):
+
+    trans_id = get_transaction_id(line)
+
+    label = message
+
+    if trans_id:
+
+        label += " | TRANS_ID: " + trans_id
+
+    return label
+
+
+# ============================================================
+# GENERATE FLOW
+# ============================================================
 
 def generate_flow_diagram(log_file_lines, UE_ID):
 
-    title = "title Call flow for "+UE_ID+"\n"
-    # ue_flow.append("DU Log Parser")
+    flow = []
 
-    cu_note = "Note right of CU: External node\n"
-    ue_flow.append(cu_note)
+    # --------------------------------------------------------
+    # Mermaid notes
+    # --------------------------------------------------------
 
-    f1ap_note = "Note right of F1AP: F1AP SCTP send/recv\n"
-    ue_flow.append(f1ap_note)
+    flow.append(
+        "Note right of CU: External node\n"
+    )
 
+    flow.append(
+        "Note right of F1AP: F1AP signaling\n"
+    )
+
+    # --------------------------------------------------------
+    # Prevent duplicate consecutive messages
+    # --------------------------------------------------------
+
+    last_message = None
+
+    # --------------------------------------------------------
+    # Process log
+    # --------------------------------------------------------
 
     for line in log_file_lines:
-        if UE_ID in line:
-            for message in trans_messages:
-                if message in line:
-                    process_trans(message, line)
-            for module_name in modules:
-                if module_name in line:
-                    process_modules(modules, line)
-                    break
-            for message in f1ap_recv_messages:
-                if message in line:
-                    process_f1ap_recv_message(message, line)
-                    break
-            for message in f1ap_send_messages:
-                if message in line:
-                    process_f1ap_send_message(message, line)
-                    break
-    print(ue_flow)
-    return ue_flow
 
+        # Only selected UE
+        if not line_belongs_to_ue(line, UE_ID):
 
-if __name__ == '__main__':
-    
-    DU_file = open(cwd+file_name, "r")
-    temp_ue_flow = generate_flow_diagram(DU_file, UE_ID)
-    DU_file.close()
-    print(temp_ue_flow)
+            continue
+
+        # ====================================================
+        # TRANSACTION EVENTS
+        # ====================================================
+
+        transaction_found = False
+
+        for event in TRANSACTION_EVENTS:
+
+            if event in line:
+
+                trans_id = get_transaction_id(line)
+
+                # Do not display repeated transaction markers
+                current_key = (
+                    event,
+                    trans_id
+                )
+
+                if current_key == last_message:
+
+                    transaction_found = True
+                    break
+
+                if event == "TRANS_CREATED":
+
+                    label = "[START] Transaction Created"
+
+                else:
+
+                    label = "[DONE] Transaction Completed"
+
+                if trans_id:
+
+                    label += " | TRANS_ID: " + trans_id
+
+                flow.append(
+                    "APP_UE->>APP_UE:" + label + "\n"
+                )
+
+                last_message = current_key
+
+                transaction_found = True
+
+                break
+
+        if transaction_found:
+
+            continue
+
+        # ====================================================
+        # F1AP SIGNALING
+        # ====================================================
+
+        message_found = False
+
+        for message in F1AP_MESSAGES:
+
+            if message not in line:
+
+                continue
+
+            trans_id = get_transaction_id(line)
+
+            current_key = (
+                message,
+                trans_id
+            )
+
+            # Ignore exact consecutive duplicate
+            if current_key == last_message:
+
+                message_found = True
+                break
+
+            direction = get_direction(
+                line,
+                message
+            )
+
+            label = create_label(
+                line,
+                message
+            )
+
+            flow.append(
+                direction
+                + ":"
+                + label
+                + "\n"
+            )
+
+            last_message = current_key
+
+            message_found = True
+
+            break
+
+        if message_found:
+
+            continue
+
+    return flow
